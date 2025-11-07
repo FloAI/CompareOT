@@ -67,7 +67,9 @@ All analyses were conducted in **R (version 4.4.1)** using the following package
 All packages are available from the [Comprehensive R Archive Network (CRAN)](https://cran.r-project.org).
 
 **References:**
-- Garès V. *et al.* (2019). *On the Use of Optimal Transportation Theory to Recode Variables and Application to Database Merging*. *International Journal of Biostatistics*.
+- Garès, V. & Omer, J. (2022). *Regularized Optimal Transport of Covariates and Outcomes in Data Recoding.*  
+Journal of the American Statistical Association, 117(537), 320–333.  
+[https://doi.org/10.1080/01621459.2020.1775615](https://doi.org/10.1080/01621459.2020.1775615)
 - Van Buuren S. & Groothuis-Oudshoorn K. (2011). *MICE: Multivariate Imputation by Chained Equations in R*. *Journal of Statistical Software*.
 - Schouten R.M., Lugtig P., & Vink G. (2018). *Generating missing values for simulation purposes: a multivariate amputation procedure*. *Journal of Statistical Computation and Simulation*.
 
