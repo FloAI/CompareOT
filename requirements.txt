@@ -1,1 +1,8 @@
+## 🧠 Requirements
+
+This project is implemented in **R** (≥ 4.1).  
+Required packages include:
+
+```r
+install.packages(c("OTrecod", "MASS", "mice", "VIM", "dplyr", "ggplot2"))
 
