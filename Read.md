@@ -2,7 +2,7 @@
 
 This repository contains the code and simulation framework used in the paper:
 
-> **Optimal Transport-Based Variable Recoding: A Comparative Study with MICE and kNN Approaches**  
+> **Comparing Optimal Transport and Machine Learning Approaches for Data Merging Under Missing Covariate Scenarios: Application to Clinical Research**  
 
 ---
 
@@ -34,5 +34,27 @@ Each scenario tests the robustness of OT, MICE, and kNN in reconstructing consis
 ---
 
 ## 🧩 Repository Structure
+
+## 🧬 Data Availability
+
+Simulated data are reproducible using the provided R scripts.  
+Real data are drawn from the **National Child Development Study (NCDS)**, accessible via the **OTrecod** R package.
+
+---
+
+## 🧾 Citation
+
+If you use this code or dataset, please cite:
+
+> [Author Names]. *Optimal Transport-Based Variable Recoding: A Comparative Study with MICE and kNN Approaches.*  
+> *Bioinformatics* (Oxford University Press), 2025.
+
+---
+
+## 📄 License
+
+This project is distributed under the **MIT License**.  
+See the [LICENSE](LICENSE) file for details.
+
 
 
