@@ -40,6 +40,7 @@ Each scenario tests the robustness of OT, MICE, and kNN in reconstructing consis
 Simulated data are reproducible using the provided R scripts.  
 Real data are drawn from the **National Child Development Study (NCDS)**, accessible via the **OTrecod** R package.
 
+
 ---
 
 ## 🧾 Citation
@@ -54,5 +55,20 @@ Not yet published
 This project is distributed under the **MIT License**.  
 See the [LICENSE](LICENSE) file for details.
 
+---
+### 🧩 Software
+
+All analyses were conducted in **R (version 4.4.1)** using the following packages:
+
+- **OTrecod** (version 0.1.2) – [CRAN link](https://cran.r-project.org/package=OTrecod)
+- **mice** (version 3.18.0) – [CRAN link](https://cran.r-project.org/package=mice)
+- **VIM** (version 6.2.2) – [CRAN link](https://cran.r-project.org/package=VIM)
+
+All packages are available from the [Comprehensive R Archive Network (CRAN)](https://cran.r-project.org).
+
+**References:**
+- Garès V. *et al.* (2019). *On the Use of Optimal Transportation Theory to Recode Variables and Application to Database Merging*. *International Journal of Biostatistics*.
+- Van Buuren S. & Groothuis-Oudshoorn K. (2011). *MICE: Multivariate Imputation by Chained Equations in R*. *Journal of Statistical Software*.
+- Schouten R.M., Lugtig P., & Vink G. (2018). *Generating missing values for simulation purposes: a multivariate amputation procedure*. *Journal of Statistical Computation and Simulation*.
 
 
