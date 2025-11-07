@@ -45,9 +45,7 @@ Real data are drawn from the **National Child Development Study (NCDS)**, access
 ## 🧾 Citation
 
 If you use this code or dataset, please cite:
-
-> [Author Names]. *Optimal Transport-Based Variable Recoding: A Comparative Study with MICE and kNN Approaches.*  
-> *Bioinformatics* (Oxford University Press), 2025.
+Not yet published
 
 ---
 
