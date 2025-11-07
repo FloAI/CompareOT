@@ -1,4 +1,4 @@
-# Optimal Transport-Based Variable Recoding
+# Comparing Optimal Transport and Machine Learning Approaches for Data Merging
 
 This repository contains the code and simulation framework used in the paper:
 
