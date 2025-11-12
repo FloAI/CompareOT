@@ -23,7 +23,6 @@ merged_tab <- merge_dbs(
   row_ID1 = 1, row_ID2 = 1,
   NAME_Y = "GO90", NAME_Z = "RG91",
   ordinal_DB1 = 3, ordinal_DB2 = 4,
-  impute = "MICE", R_MICE = 2,
   seed_choice = 3023
 )
 
@@ -32,7 +31,7 @@ merged_fin   <- merged_tab$DB_READY[, -4]
 merged_finish <- merged_tab$DB_READY[, -4]
 
 # ------------------------
-# Perform Optimal Transport Imputation
+# Perform Optimal Transport recoding
 # ------------------------
 outj1 <- OT_joint(
   merged_fin,
@@ -61,15 +60,14 @@ impu_df <- merged_fin[, c("Y", "Z")]
 imp_df <- impu_df[order(as.numeric(rownames(impu_df))), ]
 
 # ------------------------
-# kNN Imputation
+# kNN recoding
 # ------------------------
 imputed_df <- kNN(merged_finish, k = 5, imp_var = FALSE)
 imputated_df <- imputed_df[, c("Y", "Z")]
 
 # ------------------------
-# MICE Imputation
+# MICE recoding
 # ------------------------
-library(mice)
 
 # Initialize MICE
 init <- mice(merged_finish, maxit = 0)
@@ -89,7 +87,6 @@ imputated_df1 <- imputated_df1[order(as.numeric(rownames(imputated_df1))), ]
 # ------------------------
 # Compute Discrete 1D Wasserstein Distance
 # ------------------------
-library(dplyr)
 
 discrete_wass <- function(vec1, vec2) {
   # Probability distributions
