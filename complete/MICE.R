@@ -1,12 +1,4 @@
-suppressPackageStartupMessages({
-  require(MASS)
-  require(norm)
-  require(VIM)
-  require(ggplot2)
-  require(naniar)
-  require(mice)
-  require(OTrecod)
-})
+
 
 source('https://raw.githubusercontent.com/R-miss-tastic/website/master/static/how-to/generate/amputation.R')
 set.seed(42)
@@ -99,7 +91,7 @@ calculate_precision_for_combinations <- function(num_samples, perc_missing, targ
   df2 <- df2[order(as.numeric(rownames(df2))), ]
   
   # ------------------------
-  # OTrecod imputation
+  # mice recoding
   # ------------------------
   init <- mice(merged_finished, maxit=0)
   init
