@@ -30,23 +30,30 @@ calculate_precision_for_combinations <- function(num_samples, perc_missing) {
   X4_num <- X4
   X5_num <- X5
 
-  Yb1_cont <- 20 + 5*X1_num + 10*X2_num + 2*X3_num - 8*X4_num + 0.3*X5_num + rnorm(num_samples, 0, 5)
+  # Generate Yb1 and Yb2 as strong functions of the predictors
+  Yb1_cont <- 20 + (5 * gender_num) + (10 * treatment_num) + (2 * dosage_num) - (8 * smoking_num) + (0.3 * data_complete$Age) + rnorm(num_samples, 0, 5)
+  Yb2_cont <- 15 + (4 * gender_num) + (8 * treatment_num) + (1.5 * dosage_num) - (6 * smoking_num) + (0.25 * data_complete$Age) + rnorm(num_samples, 0, 4)
   
-  # Categorize outcomes
+  # Define categorization functions
   categorize_Yb1 <- function(value) {
-    if (value < 25) return("[0-25]")
+    if (is.na(value)) return(NA)
+    else if (value < 25) return("[0-25]")
     else if (value < 50) return("[25-50]")
     else if (value < 75) return("[50-75]")
     else return("[75+]")
   }
+  
   categorize_Yb2 <- function(value) {
-    if (value < 30) return("Low")
+    if (is.na(value)) return(NA)
+    else if (value < 30) return("Low")
     else if (value < 60) return("Medium")
     else return("High")
   }
-
+  
+  # Apply different categorizations
   Yb1 <- sapply(Yb1_cont, categorize_Yb1)
-  Yb2 <- sapply(Yb1_cont, categorize_Yb2)
+  Yb2 <- sapply(Yb2_cont, categorize_Yb2)
+
   df_true <- data.frame(Yb1, Yb2)
 
   # ------------------------
