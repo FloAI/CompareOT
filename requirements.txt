@@ -4,5 +4,20 @@ This project is implemented in **R** (≥ 4.1).
 Required packages include:
 
 ```r
-install.packages(c("OTrecod", "MASS", "mice", "VIM", "dplyr", "ggplot2"))
+# List of required packages
+required_packages <- c(
+  "OTrecod",
+  "MASS",
+  "mice",
+  "VIM",
+  "dplyr",
+  "ggplot2",
+  "naniar",
+  "norm",
+  "devtools"
+)
+
+# Install any missing packages
+new_packages <- required_packages[!(required_packages %in% installed.packages()[,"Package"])]
+if(length(new_packages)) install.packages(new_packages)
 
