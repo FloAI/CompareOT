@@ -1,17 +1,8 @@
-suppressPackageStartupMessages({
-  require(MASS)
-  require(norm)
-  require(VIM)
-  require(ggplot2)
-  require(naniar)
-})
-library(mice)
-library(OTrecod)
 source('https://raw.githubusercontent.com/R-miss-tastic/website/master/static/how-to/generate/amputation.R')
 set.seed(42)
 
-num_samples_list <- c(500)
-perc_missing_list <- c(0.5)
+num_samples_list <- c(100 , 200, 300, 400, 500, 1000)
+perc_missing_list <- seq(0.1, 0.9, by = 0.4)
 n_reps <- 30
 
 calculate_precision_for_combinations <- function(num_samples, perc_missing) {
