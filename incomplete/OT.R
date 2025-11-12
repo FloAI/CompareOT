@@ -1,11 +1,19 @@
+suppressPackageStartupMessages({
+  require(MASS)
+  require(norm)
+  require(VIM)
+  require(ggplot2)
+  require(naniar)
+})
+library(mice)
+library(OTrecod)
 source('https://raw.githubusercontent.com/R-miss-tastic/website/master/static/how-to/generate/amputation.R')
 set.seed(42)
 
-num_samples_list <- c(100, 200, 300, 400, 500, 1000)
-perc_missing_list <- c(0.1, 0.5, 0.9)
-short_timeout_iterations <- c(31)
+num_samples_list <- c(500)
+perc_missing_list <- c(0.5)
+n_reps <- 30
 
-# Function to calculate precision with generic X variables
 calculate_precision_for_combinations <- function(num_samples, perc_missing) {
 
   # ------------------------
@@ -30,118 +38,88 @@ calculate_precision_for_combinations <- function(num_samples, perc_missing) {
   X4_num <- X4
   X5_num <- X5
 
-  # Generate Yb1 and Yb2 as strong functions of the predictors
-  Yb1_cont <- 20 + (5 * gender_num) + (10 * treatment_num) + (2 * dosage_num) - (8 * smoking_num) + (0.3 * data_complete$Age) + rnorm(num_samples, 0, 5)
-  Yb2_cont <- 15 + (4 * gender_num) + (8 * treatment_num) + (1.5 * dosage_num) - (6 * smoking_num) + (0.25 * data_complete$Age) + rnorm(num_samples, 0, 4)
-  
-  # Define categorization functions
-  categorize_Yb1 <- function(value) {
-    if (is.na(value)) return(NA)
-    else if (value < 25) return("[0-25]")
-    else if (value < 50) return("[25-50]")
-    else if (value < 75) return("[50-75]")
-    else return("[75+]")
-  }
-  
-  categorize_Yb2 <- function(value) {
-    if (is.na(value)) return(NA)
-    else if (value < 30) return("Low")
-    else if (value < 60) return("Medium")
-    else return("High")
-  }
-  
-  # Apply different categorizations
+  Yb1_cont <- 20 + 5*X1_num + 10*X2_num + 2*X3_num - 8*X4_num + 0.3*X5_num + rnorm(num_samples,0,5)
+  Yb2_cont <- 15 + 4*X1_num + 8*X2_num + 1.5*X3_num - 6*X4_num + 0.25*X5_num + rnorm(num_samples,0,4)
+
+  # Categorize outcomes
+  categorize_Yb1 <- function(v) if(v<25) "[0-25]" else if(v<50) "[25-50]" else if(v<75) "[50-75]" else "[75+]"
+  categorize_Yb2 <- function(v) if(v<30) "A_Low" else if(v<60) "B_Medium" else "C_High"
+
   Yb1 <- sapply(Yb1_cont, categorize_Yb1)
   Yb2 <- sapply(Yb2_cont, categorize_Yb2)
-
-  df_true <- data.frame(Yb1, Yb2)
+  df_true <- data.frame(Yb1,Yb2)
 
   # ------------------------
   # Prepare data frame for OTrecod
   # ------------------------
   df <- data.frame(X1=factor(X1), X2=factor(X2), X3=factor(X3), X4=factor(X4), X5=X5)
-  
-  # Introduce missingness
-  missing_mask <- rank(runif(num_samples)) <= num_samples * perc_missing
+
+  # Introduce MAR missingness
+  mar <- produce_NA(df, mechanism="MNAR", perc.missing = perc_missing, by.patterns=FALSE)
+  X.mar <- mar$data.incomp
+
+  # Introduce missing values in Yb1/Yb2 using DB A/B
+  missing_mask <- rank(runif(num_samples)) <= num_samples * 0.5
   DB <- ifelse(missing_mask,"A","B")
   Yb1[DB=="B"] <- NA
   Yb2[DB=="A"] <- NA
-  
-  df <- cbind(DB, Yb1, Yb2, df)
-  df <- df[order(df$DB), ]
+
+  df <- cbind(DB,Yb1,Yb2,X.mar)
+  df <- df[order(df$DB),]
   df$DB <- as.factor(df$DB)
   df$Yb1 <- as.factor(df$Yb1)
   df$Yb2 <- as.factor(df$Yb2)
 
   # ------------------------
-  # OTrecod recoding
+  # OTrecod imputation
   # ------------------------
   R_OUTC1 <- OT_joint(df, prox.X=0.10, convert.num=8, convert.class=1,
-                      nominal=c(1,4:8), ordinal=2:3,
-                      dist.choice="H", maxrelax=0.1, which.DB="BOTH")
-  
-  y_imputed <- R_OUTC1$DATA2_OT[, "OTpred"]
-  z_imputed <- R_OUTC1$DATA1_OT[, "OTpred"]
-  
-  df$Yb2[is.na(df$Yb2)] <- z_imputed
-  df$Yb1[is.na(df$Yb1)] <- y_imputed
+                      nominal=c(1,4:8), ordinal=2:3, dist.choice="H",
+                      maxrelax=0.1, which.DB="BOTH")
 
-  imputated_df <- df[, c("Yb1","Yb2")]
-  imputated_df <- imputated_df[order(as.numeric(rownames(imputated_df))), ]
-  
+  df$Yb2[is.na(df$Yb2)] <- R_OUTC1$DATA1_OT$OTpred
+  df$Yb1[is.na(df$Yb1)] <- R_OUTC1$DATA2_OT$OTpred
+
+  imputated_df <- df[,c("Yb1","Yb2")]
+  imputated_df <- imputated_df[order(as.numeric(rownames(imputated_df))),]
+
   # ------------------------
   # Compute precision
   # ------------------------
-  df2 <- df[, c("Yb1","Yb2")]
-  m_mask <- is.na(df2)
-  
-  calculate_precision <- function(actual, imputed, m_mask) {
-    true_positives <- sum(actual[m_mask]==imputed[m_mask], na.rm=TRUE)
-    false_positives <- sum(!is.na(imputed[m_mask]) & actual[m_mask]!=imputed[m_mask])
-    precision <- true_positives / (true_positives + false_positives)
-    return(precision)
-  }
-
-  precision <- calculate_precision(df_true, imputated_df, m_mask)
+  m_mask <- is.na(df_true)
+  tp <- sum(actual <- df_true[m_mask]==imputated_df[m_mask], na.rm=TRUE)
+  fp <- sum(!is.na(imputated_df[m_mask]) & df_true[m_mask]!=imputated_df[m_mask])
+  precision <- tp / (tp+fp)
   return(precision)
 }
 
 # ------------------------
-# Run simulation over combinations
+# Run simulation for 30 repetitions
 # ------------------------
-results <- data.frame(num_samples=integer(),
-                      perc_missing=numeric(),
-                      mean_precision=numeric(),
-                      margin_error=numeric())
+results <- data.frame(num_samples=integer(), perc_missing=numeric(), mean_precision=numeric(), margin_error=numeric())
 
 for (num_samples in num_samples_list) {
   for (perc_missing in perc_missing_list) {
-    precisions <- numeric()
-    
-    for (i in 1:10) {
-      precision <- tryCatch({
+    precisions <- numeric(n_reps)
+    for (i in 1:n_reps) {
+      precisions[i] <- tryCatch({
         calculate_precision_for_combinations(num_samples, perc_missing)
       }, error=function(e){NA})
-      precisions <- c(precisions, precision)
     }
-    
+
     precisions_clean <- na.omit(precisions)
-    
-    if (length(precisions_clean) > 1) {
+    if(length(precisions_clean)>1){
       mean_prec <- mean(precisions_clean)
       se <- sd(precisions_clean)/sqrt(length(precisions_clean))
-      margin_err <- 1.96 * se
+      margin_err <- 1.96*se
     } else {
       mean_prec <- NA
       margin_err <- NA
     }
-    
-    results <- rbind(results, data.frame(num_samples=num_samples,
-                                         perc_missing=perc_missing,
-                                         mean_precision=mean_prec,
-                                         margin_error=margin_err))
+
+    results <- rbind(results,data.frame(num_samples=num_samples, perc_missing=perc_missing,
+                                        mean_precision=mean_prec, margin_error=margin_err))
   }
 }
 
 print(results)
-
