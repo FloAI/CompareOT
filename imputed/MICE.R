@@ -78,16 +78,20 @@ calculate_precision_for_combinations <- function(num_samples, perc_missing) {
   df$Yb2 <- as.factor(df$Yb2)
 
   # ------------------------
-  # OTrecod imputation
+  # mice recoding
   # ------------------------
-  R_OUTC1 <- OT_joint(df, prox.X=0.10, convert.num=8, convert.class=1,
-                      nominal=c(1,4:8), ordinal=2:3, dist.choice="H",
-                      maxrelax=0.1, which.DB="BOTH")
-
-  df$Yb2[is.na(df$Yb2)] <- R_OUTC1$DATA1_OT$OTpred
-  df$Yb1[is.na(df$Yb1)] <- R_OUTC1$DATA2_OT$OTpred
-
-  imputated_df <- df[,c("Yb1","Yb2")]
+  init <- mice(df, maxit=0)
+  init
+  meth <- init$method
+  predM <- init$predictorMatrix
+  
+  meth[c("Yb1")]="rf"
+  meth[c("Yb2")]="rf"
+  
+  meth
+  imputed <- mice(df, method=meth, predictorMatrix=predM, m=5)
+  imputation <- complete(imputed)
+  imputated_df<- imputation[, c("Yb1", "Yb2")]
   imputated_df <- imputated_df[order(as.numeric(rownames(imputated_df))),]
 
   # ------------------------
