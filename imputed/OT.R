@@ -30,15 +30,22 @@ calculate_precision_for_combinations <- function(num_samples, perc_missing) {
   X4_num <- X4
   X5_num <- X5
 
-  Yb1_cont <- 20 + 5*X1_num + 10*X2_num + 2*X3_num - 8*X4_num + 0.3*X5_num + rnorm(num_samples,0,5)
-  Yb2_cont <- 15 + 4*X1_num + 8*X2_num + 1.5*X3_num - 6*X4_num + 0.25*X5_num + rnorm(num_samples,0,4)
-
+  
+  signal <- 20 + 5*X1_num + 10*X2_num + 2*X3_num - 8*X4_num + 0.3*X5_num
+  
+  # Compute sigma for target R²
+  sigma <- sqrt(var(signal) * (1/target_R2 - 1))
+  
+  # Generate continuous outcomes
+  Yb1_cont <- signal + sigma*rnorm(num_samples)
+  Yb2_cont <- signal + sigma*rnorm(num_samples)
+              
   # Categorize outcomes
   categorize_Yb1 <- function(v) if(v<25) "[0-25]" else if(v<50) "[25-50]" else if(v<75) "[50-75]" else "[75+]"
   categorize_Yb2 <- function(v) if(v<30) "A_Low" else if(v<60) "B_Medium" else "C_High"
 
   Yb1 <- sapply(Yb1_cont, categorize_Yb1)
-  Yb2 <- sapply(Yb2_cont, categorize_Yb2)
+  Yb2 <- sapply(Yb1_cont, categorize_Yb2)
   df_true <- data.frame(Yb1,Yb2)
 
   # ------------------------
