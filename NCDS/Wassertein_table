@@ -1,0 +1,283 @@
+suppressPackageStartupMessages({
+  require(MASS)
+  require(norm)
+  require(VIM)
+  require(ggplot2)
+  require(naniar)
+  require(mice)
+  require(OTrecod)
+  require(transport)
+  require(dplyr)
+  require(xtable)
+})
+
+set.seed(42)
+
+# --- 1. DÉFINITION DE LA FONCTION DE CONCORDANCE ---
+compute_agreement <- function(Y1, Y2, Y3) {
+  if (!all(length(Y1) == length(Y2), length(Y2) == length(Y3))) {
+    stop(paste("Les vecteurs d'entrée ont des longueurs différentes. Le calcul est invalide.",
+               "Longueurs :", length(Y1), length(Y2), length(Y3)))
+  }
+
+  n <- length(Y1)
+
+  OT_K <- mean(Y1 == Y2) * 100
+  OT_M <- mean(Y1 == Y3) * 100
+  K_M  <- mean(Y2 == Y3) * 100
+  All   <- mean((Y1 == Y2) & (Y2 == Y3)) * 100
+  Only1 <- 100 - (OT_K + OT_M + K_M - 2*All)
+
+  return(c(OT_K = OT_K, OT_M = OT_M, K_M = K_M, Triple = All, Only1 = Only1, n = n))
+}
+
+
+# --- 2. PRÉPARATION INITIALE DES DONNÉES ET IDENTIFICATION DES NA ---
+
+data(ncds_14)
+data(ncds_5)
+
+# Créer un jeu de données fusionné avec TOUS les NAs (pour IncC et les indices globaux)
+merged_tab_all_na <- merge_dbs(ncds_14, ncds_5,
+                               row_ID1 = 1, row_ID2 = 1,
+                               NAME_Y = "GO90", NAME_Z = "RG91",
+                               ordinal_DB1 = 3, ordinal_DB2 = 4,
+                               seed_choice = 3023)
+
+merged_data_all_na <- merged_tab_all_na$DB_READY[, -4] # Colonnes: X1...X5, Y, Z
+
+# Indices NA pour le filtrage (à partir du jeu de données total/IncC)
+is_na_y_inc <- which(is.na(merged_data_all_na$Y))
+is_na_z_inc <- which(is.na(merged_data_all_na$Z))
+
+
+# --- 3. DÉFINITION DES SCÉNARIOS ET CALCUL DE L'IMPUTATION ---
+
+## SCÉNARIO A : Complete Case (CC) - Rétablissement de la filtration initiale + Imputation
+
+ncds_14_clean <- na.omit(ncds_14)
+ncds_5_clean <- na.omit(ncds_5)
+
+# Cette fusion réintroduit des NA si les IDs ne correspondent pas
+merged_tab_cc <- merge_dbs(ncds_14_clean, ncds_5_clean,
+                           row_ID1 = 1, row_ID2 = 1,
+                           NAME_Y = "GO90", NAME_Z = "RG91",
+                           ordinal_DB1 = 3, ordinal_DB2 = 4,
+                           seed_choice = 3023)
+
+merged_cc_data_raw <- merged_tab_cc$DB_READY[, -4]
+
+# Conversion systématique de TOUTES les colonnes en FACTOR
+merged_cc_data_filtered <- merged_cc_data_raw %>%
+  mutate(across(everything(), as.factor))
+
+merged_cc_data = merged_cc_data_filtered
+merged_cc_kNN = merged_cc_data_filtered
+merged_cc_MICE = merged_cc_data_filtered
+
+# --- Imputation CC ---
+outj1_cc <- OT_joint(merged_cc_data, nominal = c(1:4), ordinal = 5:6, dist.choice = "E", which.DB = "BOTH")
+y_imputed_cc <- outj1_cc$DATA2_OT[, "OTpred"]
+z_imputed_cc <- outj1_cc$DATA1_OT[, "OTpred"]
+kNN_imputed_cc <- kNN(merged_cc_kNN, k = 5, imp_var = TRUE)
+init_cc <- mice(merged_cc_MICE, maxit = 0)
+meth_cc <- init_cc$method; predM_cc <- init_cc$predictorMatrix
+meth_cc[c("Y")] <- "rf"; meth_cc[c("Z")] <- "rf"
+mice_imputed_cc <- mice(merged_cc_MICE, method = meth_cc, predictorMatrix = predM_cc, m = 5, seed = 123)
+completed_df_cc <- complete(mice_imputed_cc, 1)
+
+# --- Indices NA spécifiques au CC filtré ---
+is_na_y_cc <- which(is.na(merged_cc_data$Y))
+is_na_z_cc <- which(is.na(merged_cc_data$Z))
+
+# --- Vecteurs complets CC ---
+Y_OT_CC_full <- merged_cc_data$Y; Y_OT_CC_full[is.na(Y_OT_CC_full)] <- y_imputed_cc
+Z_OT_CC_full <- merged_cc_data$Z; Z_OT_CC_full[is.na(Z_OT_CC_full)] <- z_imputed_cc
+
+# --- Extraction NA Only CC ---
+# Ceci calcule la concordance sur les NA introduits par la fusion
+Y_OT_CC_NAonly  <- as.character(Y_OT_CC_full[is_na_y_cc])
+Y_K_CC_NAonly   <- as.character(kNN_imputed_cc$Y[is_na_y_cc])
+Y_M_CC_NAonly <- as.character(completed_df_cc$Y[is_na_y_cc])
+Z_OT_CC_NAonly  <- as.character(Z_OT_CC_full[is_na_z_cc])
+Z_K_CC_NAonly  <- as.character(kNN_imputed_cc$Z[is_na_z_cc])
+Z_M_CC_NAonly <- as.character(completed_df_cc$Z[is_na_z_cc])
+
+
+## SCÉNARIO B : Incomplete Case (IncC)
+
+# Conversion systématique de TOUTES les colonnes en FACTOR
+merged_inc_data_factors <- merged_data_all_na %>%
+  mutate(across(everything(), as.factor))
+
+merged_inc_data = merged_inc_data_factors
+merged_inc_kNN = merged_inc_data_factors
+merged_inc_MICE = merged_inc_data_factors
+
+# --- Imputation IncC ---
+outj1_inc <- OT_joint(merged_inc_data, nominal = c(1:4), ordinal = 5:6, dist.choice = "E", which.DB = "BOTH")
+y_imputed_inc <- outj1_inc$DATA2_OT[, "OTpred"]
+z_imputed_inc <- outj1_inc$DATA1_OT[, "OTpred"]
+kNN_imputed_inc <- kNN(merged_inc_kNN, k = 5, imp_var = TRUE)
+init_inc <- mice(merged_inc_MICE, maxit = 0)
+meth_inc <- init_inc$method; predM_inc <- init_inc$predictorMatrix
+meth_inc[c("Y")] <- "rf"; meth_inc[c("Z")] <- "rf"
+mice_imputed_inc <- mice(merged_inc_MICE, method = meth_inc, predictorMatrix = predM_inc, m = 5, seed = 123)
+completed_df_inc <- complete(mice_imputed_inc, 1)
+
+# --- Vecteurs complets IncC ---
+Y_OT_IncC_full <- merged_inc_data$Y; Y_OT_IncC_full[is.na(Y_OT_IncC_full)] <- y_imputed_inc
+Z_OT_IncC_full <- merged_inc_data$Z; Z_OT_IncC_full[is.na(Z_OT_IncC_full)] <- z_imputed_inc
+
+# --- Extraction NA Only IncC ---
+Y_OT_IncC_NAonly  <- as.character(Y_OT_IncC_full[is_na_y_inc])
+Y_K_IncC_NAonly   <- as.character(kNN_imputed_inc$Y[is_na_y_inc])
+Y_M_IncC_NAonly <- as.character(completed_df_inc$Y[is_na_y_inc])
+Z_OT_IncC_NAonly    <- as.character(Z_OT_IncC_full[is_na_z_inc])
+Z_K_IncC_NAonly   <- as.character(kNN_imputed_inc$Z[is_na_z_inc])
+Z_M_IncC_NAonly  <- as.character(completed_df_inc$Z[is_na_z_inc])
+
+
+## SCÉNARIO C : Imputed Case (ImpC)
+
+merged_tab_imp <- merge_dbs(ncds_14, ncds_5,
+                            row_ID1 = 1, row_ID2 = 1,
+                            NAME_Y = "GO90", NAME_Z = "RG91",
+                            ordinal_DB1 = 3, ordinal_DB2 = 4,
+                            impute = "MICE", R_MICE = 2,
+                            seed_choice = 3023)
+
+merged_imp_data_raw <- merged_tab_imp$DB_READY[, -4] # Jeu de données pré-imputé
+
+# Conversion systématique de TOUTES les colonnes en FACTOR
+merged_imp_data_factors <- merged_imp_data_raw %>%
+  mutate(across(everything(), as.factor))
+
+merged_imp_data = merged_imp_data_factors
+merged_imp_kNN = merged_imp_data_factors
+merged_imp_MICE = merged_imp_data_factors
+
+# --- Imputation ImpC ---
+outj1_imp <- OT_joint(merged_imp_data, nominal = c(1:4), ordinal = 5:6, dist.choice = "E", which.DB = "BOTH")
+y_imputed_imp <- outj1_imp$DATA2_OT[, "OTpred"]
+z_imputed_imp <- outj1_imp$DATA1_OT[, "OTpred"]
+kNN_imputed_imp <- kNN(merged_imp_kNN, k = 5, imp_var = TRUE)
+init_imp <- mice(merged_imp_MICE, maxit = 0)
+meth_imp <- init_imp$method; predM_imp <- init_imp$predictorMatrix
+meth_imp[c("Y")] <- "rf"; meth_imp[c("Z")] <- "rf"
+mice_imputed_imp <- mice(merged_imp_MICE, method = meth_imp, predictorMatrix = predM_imp, m = 5, seed = 123)
+completed_df_imp <- complete(mice_imputed_imp, 1)
+
+# --- Extraction NA Only ImpC ---
+Y_OT_ImpC_NAonly  <- as.character(y_imputed_imp)
+Z_OT_ImpC_NAonly <- as.character(z_imputed_imp)
+
+# Nous filtrons les résultats kNN et MICE par les indices NA du jeu de données total (IncC/original)
+Y_K_ImpC_NAonly   <- as.character(kNN_imputed_imp$Y[is_na_y_inc])
+Y_M_ImpC_NAonly <- as.character(completed_df_imp$Y[is_na_y_inc])
+Z_K_ImpC_NAonly  <- as.character(kNN_imputed_imp$Z[is_na_z_inc])
+Z_M_ImpC_NAonly <- as.character(completed_df_imp$Z[is_na_z_inc])
+
+
+# --- 4. CALCUL DES CONCORDANCES ET CRÉATION DU TABLEAU FINAL ---
+
+CC_Y_NAonly <- compute_agreement(Y_OT_CC_NAonly, Y_K_CC_NAonly, Y_M_CC_NAonly)
+CC_Z_NAonly <- compute_agreement(Z_OT_CC_NAonly, Z_K_CC_NAonly, Z_M_CC_NAonly)
+IncC_Y_NAonly <- compute_agreement(Y_OT_IncC_NAonly, Y_K_IncC_NAonly, Y_M_IncC_NAonly)
+IncC_Z_NAonly <- compute_agreement(Z_OT_IncC_NAonly, Z_K_IncC_NAonly, Z_M_IncC_NAonly)
+ImpC_Y_NAonly <- compute_agreement(Y_OT_ImpC_NAonly, Y_K_ImpC_NAonly, Y_M_ImpC_NAonly)
+ImpC_Z_NAonly <- compute_agreement(Z_OT_ImpC_NAonly, Z_K_ImpC_NAonly, Z_M_ImpC_NAonly)
+
+# Construction du tableau de concordance (omitted for brevity, assume results are stored)
+# ... (Affichage du tableau de concordance) ...
+
+# ====================================================================
+# --- 5. CALCUL DES DISTANCES DE WASSERSTEIN ET CRÉATION DU TABLEAU ---
+# ====================================================================
+
+# --- Définition des vecteurs complets (nécessaires pour le calcul des distributions finales) ---
+# Ces définitions assurent que les objets *_full sont bien créés pour tous les scénarios.
+
+# CC (Complete Case)
+Y_K_CC_full <- kNN_imputed_cc$Y
+Y_M_CC_full <- completed_df_cc$Y
+Z_K_CC_full <- kNN_imputed_cc$Z
+Z_M_CC_full <- completed_df_cc$Z
+
+# IncC (Incomplete Case)
+Y_K_IncC_full <- kNN_imputed_inc$Y
+Y_M_IncC_full <- completed_df_inc$Y
+Z_K_IncC_full <- kNN_imputed_inc$Z
+Z_M_IncC_full <- completed_df_inc$Z
+
+# ImpC (Imputed Case)
+# Y/Z_OT_ImpC_full: Utilisez la colonne du jeu de données pré-imputé pour OT
+Y_OT_ImpC_full <- merged_imp_data$Y
+Y_K_ImpC_full <- kNN_imputed_imp$Y
+Y_M_ImpC_full <- completed_df_imp$Y
+Z_OT_ImpC_full <- merged_imp_data$Z
+Z_K_ImpC_full <- kNN_imputed_imp$Z
+Z_M_ImpC_full <- completed_df_imp$Z
+
+
+# --- Fonction pour calculer la distance de Wasserstein (W1) ---
+calculate_wasserstein <- function(A, B) {
+    # Conversion en rangs numériques pour W1D (Distance de Wasserstein 1D)
+    A_num <- as.numeric(as.factor(A))
+    B_num <- as.numeric(as.factor(B))
+
+    # Assurer que les vecteurs ont la même longueur
+    min_len <- min(length(A_num), length(B_num))
+    if (min_len == 0) return(NA)
+
+    # Utiliser le quantile-quantile (W1D)
+    return(wasserstein1d(A_num[1:min_len], B_num[1:min_len], p = 1))
+}
+
+
+# Fonction utilitaire pour extraire les résultats
+extract_wasserstein_results <- function(Y_OT, Y_K, Y_M, Z_OT, Z_K, Z_M) {
+  results <- list(
+    Y_OT_K = calculate_wasserstein(Y_OT, Y_K),
+    Y_OT_M = calculate_wasserstein(Y_OT, Y_M),
+    Y_K_M  = calculate_wasserstein(Y_K, Y_M),
+    Z_OT_K = calculate_wasserstein(Z_OT, Z_K),
+    Z_OT_M = calculate_wasserstein(Z_OT, Z_M),
+    Z_K_M  = calculate_wasserstein(Z_K, Z_M)
+  )
+  return(unlist(results))
+}
+
+# Calcul des distances W1 pour chaque scénario (utilisant les vecteurs FULL)
+W1_CC <- extract_wasserstein_results(Y_OT_CC_full, Y_K_CC_full, Y_M_CC_full,
+                                     Z_OT_CC_full, Z_K_CC_full, Z_M_CC_full)
+
+W1_IncC <- extract_wasserstein_results(Y_OT_IncC_full, Y_K_IncC_full, Y_M_IncC_full,
+                                       Z_OT_IncC_full, Z_K_IncC_full, Z_M_IncC_full)
+
+W1_ImpC <- extract_wasserstein_results(Y_OT_ImpC_full, Y_K_ImpC_full, Y_M_ImpC_full,
+                                       Z_OT_ImpC_full, Z_K_ImpC_full, Z_M_ImpC_full)
+
+
+# Construction du tableau de Wasserstein
+wasserstein_table <- data.frame(
+  Scenario = rep(c("CC", "IncC", "ImpC"), each = 2),
+  Variable = rep(c("Y", "Z"), times = 3),
+  OT_kNN   = c(W1_CC["Y_OT_K"], W1_CC["Z_OT_K"], W1_IncC["Y_OT_K"], W1_IncC["Z_OT_K"], W1_ImpC["Y_OT_K"], W1_ImpC["Z_OT_K"]),
+  OT_MICE  = c(W1_CC["Y_OT_M"], W1_CC["Z_OT_M"], W1_IncC["Y_OT_M"], W1_IncC["Z_OT_M"], W1_ImpC["Y_OT_M"], W1_ImpC["Z_OT_M"]),
+  kNN_MICE = c(W1_CC["Y_K_M"], W1_CC["Z_K_M"], W1_IncC["Y_K_M"], W1_IncC["Z_K_M"], W1_ImpC["Y_K_M"], W1_ImpC["Z_K_M"])
+)
+
+# Arrondir les distances
+wasserstein_table <- wasserstein_table %>%
+  mutate(across(c(OT_kNN:kNN_MICE), ~round(., 4)))
+
+# Affichage du tableau de Wasserstein
+print("--- TABLEAU DE DISTANCES DE WASSERSTEIN (W1) ---")
+print("Distance entre les distributions finales (valeurs observées + imputées)")
+print(wasserstein_table)
+
+# Exportation LaTeX
+library(xtable)
+print(xtable(wasserstein_table, caption = "Wasserstein-1 Distance between Final Imputed Distributions for Y and Z"),
+      include.rownames = FALSE)
