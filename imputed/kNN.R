@@ -4,6 +4,7 @@ set.seed(42)
 
 num_samples_list <- c(100, 200, 300, 400, 500, 1000)
 perc_missing_list <- c(0.1, 0.5, 0.9)
+target_R2 <- 0.8
 n_reps <- 30
 
 calculate_precision_for_combinations <- function(num_samples, perc_missing) {
