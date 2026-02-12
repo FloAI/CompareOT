@@ -43,7 +43,7 @@ Real data are drawn from the **National Child Development Study (NCDS)**, access
 
 ---
 
-## 🧾 Citation
+##  Citation
 
 If you use this code or dataset, please cite:
 Not yet published
