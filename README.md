@@ -6,7 +6,7 @@ This repository contains the code and simulation framework used in the paper:
 
 ---
 
-## 📘 Overview
+## Overview
 
 This project investigates the problem of **variable recoding** in heterogeneous observational datasets where categorical or ordinal outcomes are defined differently across sources.  
 We compare a **Optimal Transport (OT)** method with two standard machine learning techniques:
@@ -19,7 +19,7 @@ Performance is assessed through **precision scores**  between reconstructed and 
 
 ---
 We also  consider a real dataset, the National Child Development Styudy(NCDS) and comapre distributions of results between the methods using the **Wasserstein distances**. 
-## ⚙️ Simulation Design
+##  Simulation Design
 
 The simulations are structured into **10 scenarios**, summarized below:
 
@@ -33,9 +33,9 @@ Each scenario tests the robustness of OT, MICE, and kNN in reconstructing consis
 
 ---
 
-## 🧩 Repository Structure
+##  Repository Structure
 
-## 🧬 Data Availability
+##  Data Availability
 
 Simulated data are reproducible using the provided R scripts.  
 Real data are drawn from the **National Child Development Study (NCDS)**, accessible via the **OTrecod** R package.
@@ -50,13 +50,13 @@ Not yet published
 
 ---
 
-## 📄 License
+##  License
 
 This project is distributed under the **MIT License**.  
 See the [LICENSE](LICENSE) file for details.
 
 ---
-### 🧩 Software
+###  Software
 
 All analyses were conducted in **R (version 4.4.1)** using the following packages:
 
