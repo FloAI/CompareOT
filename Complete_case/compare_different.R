@@ -92,8 +92,12 @@ run_sim_combination <- function(num_samples, perc_missing, target_R2) {
   Yb1_cont <- signal1 + sigma1*rnorm(num_samples)
   Yb2_cont <- signal2 + sigma2*rnorm(num_samples)
 
-  categorize_Yb1 <- function(v) { if(is.na(v)) NA else if(v<25) "[0-25]" else if(v<50) "[25-50]" else if(v<75) "[50-75]" else "[75+]" }
-  categorize_Yb2 <- function(v) { if(is.na(v)) NA else if(v<30) "Low" else if(v<60) "Medium" else "High" }
+  categorize_Yb1 <- cut(Yb1_cont,
+                  breaks = quantile(Yb1_cont, probs = seq(0,1,.25)),
+                  include.lowest = TRUE, labels = c("[Q1]","[Q2]","[Q3]","[Q4]"))
+  categorize_Yb2 <- cut(Yb2_cont,
+                  breaks = quantile(Yb2_cont, probs = seq(0,1,1/3)),
+                  include.lowest = TRUE, labels = c("[Q1]","[Q2]","[Q3]"))
 
   df_true <- data.frame(Yb1 = sapply(Yb1_cont, categorize_Yb1),
                         Yb2 = sapply(Yb2_cont, categorize_Yb2))
