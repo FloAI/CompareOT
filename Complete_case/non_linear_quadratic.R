@@ -48,9 +48,9 @@ calc_metrics <- function(actual_df, imputed_df, m_mask_yb1, m_mask_yb2) {
   p_e <- sum(rowSums(tab) * colSums(tab)) / (sum(tab)^2)
   kappa_val <- ifelse(p_e == 1, 0, (p_o - p_e) / (1 - p_e))
 
-  # 3. MAE (requires numeric mapping for ordinals)
-  map_yb1 <- c("[0-25]"=1, "[25-50]"=2, "[50-75]"=3, "[75+]"=4)
-  map_yb2 <- c("Low"=1, "Medium"=2, "High"=3)
+   # 3. MAE (requires numeric mapping for ordinals)
+  map_yb1 <- c("[Q1]"=1, "[Q2]"=2, "[Q3]"=3, "[Q4]"=4)
+  map_yb2 <- c("[Q1]"=1, "[Q2]"=2, "[Q3]"=3)
 
   act_num <- c(map_yb1[act1], map_yb2[act2])
   imp_num <- c(map_yb1[imp1], map_yb2[imp2])
