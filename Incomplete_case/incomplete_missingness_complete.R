@@ -73,8 +73,12 @@ generate_data <- function(num_samples, perc_missing, mech) {
 
   Yb1_cont <- signal + sigma*rnorm(num_samples)
 
-  categorize_Yb1 <- function(v) if(v<25) "[0-25]" else if(v<50) "[25-50]" else if(v<75) "[50-75]" else "[75+]"
-  categorize_Yb2 <- function(v) if(v<30) "A_Low" else if(v<60) "B_Medium" else "C_High"
+  categorize_Yb1 <- cut(Yb1_cont,
+                  breaks = quantile(Yb1_cont, probs = seq(0,1,.25)),
+                  include.lowest = TRUE, labels = c("[Q1]","[Q2]","[Q3]","[Q4]"))
+  categorize_Yb2 <- cut(Yb2_cont,
+                  breaks = quantile(Yb2_cont, probs = seq(0,1,1/3)),
+                  include.lowest = TRUE, labels = c("[Q1]","[Q2]","[Q3]"))
 
   Yb1_true <- factor(sapply(Yb1_cont, categorize_Yb1), ordered = TRUE, levels = c("[0-25]", "[25-50]", "[50-75]", "[75+]"))
   Yb2_true <- factor(sapply(Yb1_cont, categorize_Yb2), ordered = TRUE, levels = c("A_Low", "B_Medium", "C_High"))
