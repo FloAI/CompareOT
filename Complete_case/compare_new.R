@@ -96,7 +96,7 @@ run_sim_combination <- function(num_samples, perc_missing, target_R2) {
   Yb2_cont <- signal + sigma*rnorm(num_samples)
 
   # Categorize outcomes strictly as Code 2
-   categorize_Yb1 <- cut(Yb1_cont,
+  categorize_Yb1 <- cut(Yb1_cont,
                   breaks = quantile(Yb1_cont, probs = seq(0,1,.25)),
                   include.lowest = TRUE, labels = c("[Q1]","[Q2]","[Q3]","[Q4]"))
   categorize_Yb2 <- cut(Yb2_cont,
