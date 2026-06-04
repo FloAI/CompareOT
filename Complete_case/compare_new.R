@@ -53,8 +53,8 @@ calc_metrics <- function(actual_df, imputed_df, m_mask_yb1, m_mask_yb2) {
   kappa_val <- ifelse(p_e == 1, 0, (p_o - p_e) / (1 - p_e))
 
   # 3. MAE (requires numeric mapping for ordinals)
-  map_yb1 <- c("[0-25]"=1, "[25-50]"=2, "[50-75]"=3, "[75+]"=4)
-  map_yb2 <- c("Low"=1, "Medium"=2, "High"=3)
+  map_yb1 <- c("[Q1]"=1, "[Q2]"=2, "[Q3]"=3, "[Q4]"=4)
+  map_yb2 <- c("[Q1]"=1, "[Q2]"=2, "[Q3]"=3)
 
   act_num <- c(map_yb1[act1], map_yb2[act2])
   imp_num <- c(map_yb1[imp1], map_yb2[imp2])
@@ -96,20 +96,12 @@ run_sim_combination <- function(num_samples, perc_missing, target_R2) {
   Yb2_cont <- signal + sigma*rnorm(num_samples)
 
   # Categorize outcomes strictly as Code 2
-  categorize_Yb1 <- function(value) {
-    if (is.na(value)) return(NA)
-    else if (value < 25) return("[0-25]")
-    else if (value < 50) return("[25-50]")
-    else if (value < 75) return("[50-75]")
-    else return("[75+]")
-  }
-
-  categorize_Yb2 <- function(value) {
-    if (is.na(value)) return(NA)
-    else if (value < 30) return("Low")
-    else if (value < 60) return("Medium")
-    else return("High")
-  }
+   categorize_Yb1 <- cut(Yb1_cont,
+                  breaks = quantile(Yb1_cont, probs = seq(0,1,.25)),
+                  include.lowest = TRUE, labels = c("[Q1]","[Q2]","[Q3]","[Q4]"))
+  categorize_Yb2 <- cut(Yb2_cont,
+                  breaks = quantile(Yb2_cont, probs = seq(0,1,1/3)),
+                  include.lowest = TRUE, labels = c("[Q1]","[Q2]","[Q3]"))
 
   Yb1 <- sapply(Yb1_cont, categorize_Yb1)
   Yb2 <- sapply(Yb2_cont, categorize_Yb2)
