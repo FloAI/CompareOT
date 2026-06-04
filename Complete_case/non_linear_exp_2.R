@@ -95,6 +95,7 @@ run_sim_combination <- function(num_samples, perc_missing, target_R2) {
   Yb1_cont <- signal + sigma*rnorm(num_samples)
   Yb2_cont <- signal + sigma*rnorm(num_samples)
 
+              
   # Categorize outcomes using quantile cuts
   Yb1 <- as.character(cut(Yb1_cont,
                           breaks = quantile(Yb1_cont, probs = c(0, 0.25, 0.5, 0.75, 1)),
